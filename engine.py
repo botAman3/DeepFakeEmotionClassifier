@@ -43,3 +43,35 @@ def train_one_epoch(model , dataloader , criterion , optimizer , device , grad_c
     return total_loss/len(dataloader)
 
 
+def evaluate(model , dataloader , criterion , device):
+    
+    model.eval()
+    total_loss = 0 
+    all_preds , all_true , all_scores = [] , [] , []
+
+    pbar = tqdm(dataloader , desc = "Validating")
+
+    with torch.no_grad():
+        for inputs , labels in pbar :
+            if inputs is None : continue 
+            inputs , labels = inputs.to(device) , labels.to(device)
+
+            outputs = model(inputs).squeeze(-1)
+            loss = criterion(outputs , labels)
+            total_loss += loss.item()
+
+            scores = torch.sigmoid(outputs).cpu().numpy()
+            preds = scores.round()
+
+            all_scores.extend(scores)
+            all_preds.extend(preds)
+            all_true.extend(labels.cpu().numpy())
+    
+    avg_loss = total_loss / len(dataloader)
+    accuracy = accuracy_score(all_true , all_preds)
+    f1 = f1_score(all_true , all_preds)
+    eer = calculate_eer(np.array(all_true) , np.array(all_scores))
+
+    return avg_loss , accuracy , f1 , eer 
+
+
